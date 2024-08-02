@@ -34,3 +34,46 @@ export const signin= async(req,res,next) =>{
     }
 }
 
+export const google = async (req, res, next) => {
+    try {
+      // Ensure req.body contains the necessary fields
+      if (!req.body || !req.body.email || !req.body.name || !req.body.photo) {
+        return res.status(400).json({ message: 'Invalid request data' });
+      }
+  
+      // Find user by email
+      const user = await User.findOne({ email: req.body.email });
+  
+      if (user) {
+        // User exists, create a JWT token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+        res
+          .cookie('access_token', token, { httpOnly: true })
+          .status(200)
+          .json(user);
+      } else {
+        // User does not exist, create a new user
+        const generatedPassword = Math.random().toString(36).slice(-8);
+        const hashPassword = bcryptjs.hashSync(generatedPassword, 10);
+        const username = req.body.name.split(" ").join("").toLowerCase() + Math.random().toString(36).slice(-3);
+  
+        const newUser = new User({
+          username: username,
+          email: req.body.email,
+          password: hashPassword,
+          avatar: req.body.photo,
+        });
+  
+        await newUser.save();
+  
+        // Create a JWT token for the new user
+        const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res
+          .cookie('access_token', token, { httpOnly: true })
+          .status(200)
+          .json(newUser);
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
