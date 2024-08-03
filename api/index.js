@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import db from './config/database.js';
 import userRouter from "./routes/user.route.js";
 import authRouter from "./routes/auth.route.js"
+import cookieParser from 'cookie-parser';
 
 const app=express();
 dotenv.config();
@@ -10,6 +11,7 @@ dotenv.config();
 db.connect();
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.listen(3000,() => {
     console.log("Server is running at 3000!");
