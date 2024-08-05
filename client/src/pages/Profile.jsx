@@ -164,11 +164,11 @@ export default function Profile() {
         >
          {loading ? "Loading...":"UPDATE"}
         </button>
-        <button
-          className='rounded-lg bg-green-700 text-white p-3 hover:opacity-95 disabled:opacity-80'
+        <Link to='/create-listing'
+          className='rounded-lg bg-green-700 text-center text-white p-3 hover:opacity-95 disabled:opacity-80'
         >
           CREATE LISTING
-        </button>
+        </Link>
       </form>
       <div className='flex justify-between gap-2 mt-5 text-red-700'>
         <p className='cursor-pointer' onClick={handleDeleteUser}>
