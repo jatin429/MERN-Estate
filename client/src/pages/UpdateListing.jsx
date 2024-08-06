@@ -1,13 +1,14 @@
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
-import  { useState } from 'react'
+import  { useEffect, useState } from 'react'
 import { app } from '../firebase';
 import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
-export default function CreateListing() {
+export default function UpdateListing() {
     const [files,setFiles]=useState([]);
     const {currentUser}=useSelector((state)=>state.user);
     const navigate=useNavigate();
+    const params=useParams();
     const [formData,setFormData]=useState({
         imageUrls:[],
         name:"",
@@ -26,7 +27,21 @@ export default function CreateListing() {
     const [uploading,setUploading]=useState(false);
     const [error,setError]=useState(false);
     const [loading,setLoading]=useState(false);
-    console.log(formData)
+    
+    useEffect(()=>{
+    const fetchListing= async ()=>{
+        const listingId= params.listingId;
+        const res=await fetch(`/api/listing/get/${listingId}`);
+        const data=await res.json();
+        if(data.success===false){
+            console.log(data.message);
+            return ;
+        }
+        setFormData(data);
+    }
+    fetchListing();
+    },[])
+
     const handleImageSubmit=(e)=>{
          if(files.length > 0 && files.length + formData.imageUrls.length < 7){
              setUploading(true);
@@ -105,7 +120,7 @@ export default function CreateListing() {
         if(+formData.regularPrice < +formData.discountPrice) return setError("Discounted price must be less than regular price");
             setLoading(true);
             setError(false);
-            const res=await fetch('/api/listing/create',{
+            const res=await fetch(`/api/listing/update/${params.listingId}`,{
                 method:"POST",
                 headers:{
                     "Content-Type":"application/json",
@@ -130,7 +145,7 @@ export default function CreateListing() {
     
   return (
     <div className='p-3 max-w-4xl mx-auto'>
-        <h1 className='text-3xl font-semibold text-center my-7'>Create a Listing</h1>
+        <h1 className='text-3xl font-semibold text-center my-7'>Update a Listing</h1>
         <form onSubmit={handleSubmit} className='flex flex-col sm:flex-row gap-4'>
          <div className='flex flex-col gap-4 flex-1'>
             <input type='text' placeholder='Name' className='border p-3 rounded-lg' id='name' maxLength='62' minLength='10' required onChange={handleChange} value={formData.name}/>
@@ -209,7 +224,7 @@ export default function CreateListing() {
             ))
          }
          <button disabled={loading || uploading} className='text-white bg-slate-700 p-3 rounded-lg hover:opacity-95 disabled:opacity-80'>
-         {loading ? "CREATING..." : "CREATE LISTING"}</button>
+         {loading ? "UPDATING..." : "UPDATE LISTING"}</button>
          {error && <p className='text-red-700 text-sm'>{error}</p>}
          </div>
         </form>
