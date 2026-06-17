@@ -3,6 +3,45 @@ import { errorHandler } from "../utils/error.js";
 
 export const createListing=async(req,res,next)=>{
   try {
+    // sanitize imageUrls: ensure array of clean url strings
+    if (req.body.imageUrls) {
+      let urls = [];
+      const raw = req.body.imageUrls;
+
+      if (Array.isArray(raw)) {
+        urls = raw.slice();
+      } else if (typeof raw === 'string') {
+        // try JSON parse first
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            urls = parsed;
+          } else if (typeof parsed === 'string') {
+            urls = [parsed];
+          }
+        } catch (e) {
+          // fallback: extract http/https urls from the string
+          const matches = raw.match(/https?:\/\/[^\s"'\\]+/g);
+          if (matches) urls = matches;
+          else urls = [raw];
+        }
+      }
+
+      // clean each url: remove backslashes, surrounding quotes, newlines, and trim
+      req.body.imageUrls = urls
+        .map((u) => {
+          if (u == null) return '';
+          let s = String(u);
+          s = s.replace(/\\+/g, ''); // remove backslashes
+          s = s.replace(/\r?\n/g, ''); // remove newlines
+          s = s.trim();
+          if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1);
+          if (s.startsWith("'") && s.endsWith("'")) s = s.slice(1, -1);
+          return s.trim();
+        })
+        .filter(Boolean);
+    }
+
     const listing=await Listing.create(req.body);
     return res.status(201).json(listing);
   } catch (error) {

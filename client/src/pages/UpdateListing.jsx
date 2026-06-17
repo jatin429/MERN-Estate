@@ -1,6 +1,4 @@
-import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
-import  { useEffect, useState } from 'react'
-import { app } from '../firebase';
+import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -34,7 +32,7 @@ export default function UpdateListing() {
         const res=await fetch(`/api/listing/get/${listingId}`);
         const data=await res.json();
         if(data.success===false){
-            console.log(data.message);
+            // console.log(data.message);
             return ;
         }
         setFormData(data);
@@ -42,47 +40,32 @@ export default function UpdateListing() {
     fetchListing();
     },[])
 
-    const handleImageSubmit=(e)=>{
+    const handleImageSubmit=async(e)=>{
          if(files.length > 0 && files.length + formData.imageUrls.length < 7){
              setUploading(true);
              setImageUploadError(false);
-            const promises=[];
-            for(let i=0;i<files.length;i++){
-                promises.push(storeImage(files[i]));
-            }
-            Promise.all(promises).then((urls)=>{
-                setFormData({...formData, imageUrls: formData.imageUrls.concat(urls)});
-                setImageUploadError(false);
-                setUploading(false);
-            }).catch((error)=>{
-                setImageUploadError('Image upload failed (2mb max per image)');
-                setUploading(false);
-            });
+             try{
+               const form = new FormData();
+               for(let i=0;i<files.length;i++){ form.append('images', files[i]); }
+
+               const res = await fetch('/api/upload', {
+                 method: 'POST',
+                 body: form,
+                 credentials: 'include'
+               });
+               const data = await res.json();
+               if(!res.ok) throw new Error(data.message || 'Upload failed');
+               setFormData({...formData, imageUrls: formData.imageUrls.concat(data.urls)});
+               setImageUploadError(false);
+             }catch(err){
+               setImageUploadError(err.message || 'Image upload failed');
+             }finally{
+               setUploading(false);
+             }
          }else{
             setImageUploadError("You can only upload 6 images per listing");
             setUploading(false);
          }
-    }
-    const storeImage=async(file)=>{
-      return new Promise((reslove,reject)=>{
-        const storage=getStorage(app);
-        const fileName=new Date().getTime() + file.name;
-        const storageRef=ref(storage,fileName);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on(
-            "state_changed",
-            (snapshot) => {},
-            (error) => {
-              reject(error) 
-            },
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                reslove(downloadURL);
-              });
-            }
-          );
-      })
     }
     
     const handleRemoveImage=async(index)=>{

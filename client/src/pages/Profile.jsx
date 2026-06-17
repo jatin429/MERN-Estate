@@ -122,7 +122,7 @@ export default function Profile() {
       setShowListingError(false);
       const res=await fetch(`/api/user/listings/${currentUser._id}`);
       const data=await res.json();
-      console.log(data);
+      // console.log(data);
       if(data.success === false){
         setShowListingError(true);
         return ;
@@ -140,12 +140,12 @@ export default function Profile() {
        });
        const data=await res.json();
        if(data.success===false){
-        console.log(data.message);
+        // console.log(data.message);
         return ;
        }
        setUserListing((prev)=>prev.filter((listing)=>listing._id !== listingId));
     } catch (error) {
-      console.log(error.message);
+      // console.log(error.message);
     }
   }
 
