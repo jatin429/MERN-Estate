@@ -3,12 +3,11 @@ import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateUserFailure, updateUserStart, updateUserSuccess, deleteUserStart, deleteUserSuccess, deleteUserFailure, signOutUserStart, signOutUserSuccess,signOutUserFailure } from "../redux/user/userSlice";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { app } from "../firebase";
+// Upload to backend (Cloudinary)
 
 export default function Profile() {
   const [formData, setFormData] = useState({});
-  const [fileError, setFileError] = useState(false);
+  const [fileError, setFileError] = useState("");
   const [fileUploadSuccess, setFileUploadSuccess] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateMessage, setUpdateMessage] = useState(""); // New state for update messages
@@ -22,31 +21,55 @@ export default function Profile() {
 
   useEffect(() => {
     if (file) {
-      handleFileUpload(file);
+      uploadToServer(file);
     }
   }, [file]);
 
-  const handleFileUpload = (file) => {
-    const storage = getStorage(app);
-    const fileName = new Date().getTime() + file.name;
-    const storageRef = ref(storage, fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+  const handleFileSelect = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (selected.size > maxSize) {
+      setFileError('Image must be less than 2MB');
+      setFile(undefined);
+      return;
+    }
+    setFileError("");
+    setFile(selected);
+  };
 
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {},
-      (error) => {
-        setFileError(error.message);
-        setFileUploadSuccess(false); // Ensure file upload success state is reset
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          setFormData((prevData) => ({ ...prevData, avatar: downloadURL }));
-          setFileError(false);
-          setFileUploadSuccess(true); // Set file upload success state
-        });
+  const uploadToServer = async (file) => {
+    try {
+      setFileUploadSuccess(false);
+      const form = new FormData();
+      form.append('images', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: form,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        const message = data.message || 'Image upload failed';
+        setFileError(message);
+        setFileUploadSuccess(false);
+        return;
       }
-    );
+
+      // upload route returns { urls }
+      const url = Array.isArray(data.urls) && data.urls.length > 0 ? data.urls[0] : null;
+      if (!url) {
+        setFileError('No upload URL returned');
+        return;
+      }
+      setFormData((prev) => ({ ...prev, avatar: url }));
+      setFileUploadSuccess(true);
+      setFileError("");
+    } catch (error) {
+      setFileError(error.message || 'Upload error');
+      setFileUploadSuccess(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -161,13 +184,13 @@ export default function Profile() {
             onClick={() => fileRef.current.click()}
           />
           <input
-            onChange={(e) => setFile(e.target.files[0])}
+            onChange={handleFileSelect}
             type='file'
             ref={fileRef}
             className='hidden'
             accept='image/*'
           />
-          {fileError ? (<span className="text-red-700">Error Image upload (image must be less than 2mb)!</span>) : null}
+          {fileError ? (<span className="text-red-700">Error Image upload ({fileError})</span>) : null}
           {fileUploadSuccess ? (<span className="text-green-700">Image successfully uploaded!</span>) : null}
         </div>
         <input
